@@ -1,0 +1,34 @@
+Makefile
+
+* meta scripts ---------------------------------------------------------
+vminst.scm
+
+vminst-defs.scm
+vminst-defs.h
+vminst-defs.c
+
+* builtin definitions --------------------------------------------------
+builtin.scm
+builtin-def-base.scm
+
+builtin.init
+builtin.h
+builtin-table.c
+
+* compiler -------------------------------------------------------------
+expand.scm
+compiler.scm
+compile-file.scm
+xc.scm
+
+macro.scm
+base.scm
+boot.scm
+
+* VM -------------------------------------------------------------------
+object.h
+object.c
+vm.c
+io.c
+builtin.c
+main.c

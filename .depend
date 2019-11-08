@@ -1,0 +1,7 @@
+builtin-table.o: builtin-table.c object.h vminst-defs.h builtin.h
+builtin.o: builtin.c object.h vminst-defs.h builtin.h
+io.o: io.c object.h vminst-defs.h
+main.o: main.c object.h vminst-defs.h builtin.h
+object.o: object.c object.h vminst-defs.h
+vm.o: vm.c object.h vminst-defs.h builtin.h
+vminst-defs.o: vminst-defs.c
