@@ -77,5 +77,3 @@
       `((lambda () ,@xs))
       `(let (,(car bs))
          (let* ,(cdr bs) ,@xs))))
-
-;(define-macro (let-values
