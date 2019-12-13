@@ -396,33 +396,3 @@ void init_load(vm_context *vm, const char *filename, bool b_init_path)
     }
     fclose(fp);
 }
-
-void init_vm_0(void)
-{
-    init_object_space();
-    init_istack();
-    init_environments(&vm);
-    init_vm_context(&vm);
-}
-
-void init_vm_1(const char *path)
-{
-    strcpy(init_path, path);
-
-    init_load(&vm, "builtin.init", true);
-    init_load(&vm, "base.init", true);
-    init_load(&vm, "win.init", true);
-
-    call_thunk(&vm, "sys-init");
-
-    g_drive_proc = symbol_value_from_nstring("sys-drive");
-    xassert_closure(g_drive_proc);
-    g_drive_argv = symbol_value_from_nstring("sys-argv");
-    xassert_vector(g_drive_argv);
-}
-
-void drive(void)
-{
-    vm.r_num_args = 0;
-    execute(&vm, g_drive_proc);
-}
