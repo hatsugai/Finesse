@@ -39,20 +39,20 @@ int main(int argc, char *argv[])
 
     init_object_space();
     init_istack();
-    init_environments(&vm);
-    init_vm_context(&vm);
+    init_environments();
 
-    init_load(&vm, "builtin.init", true);
-    init_load(&vm, "base.init", true);
+    init_load("builtin.init", true);
+    init_load("base.init", true);
     if (i == argc) {
-        init_load(&vm, "boot.init", true);
+        init_load("boot.init", true);
     } else {
         for ( ; i < argc; ++i) {
-            init_load(&vm, argv[i], false);
+            init_load(argv[i], false);
         }
     }
 
-    opt result = call_thunk(&vm, "main");
+    init_vm("main");
+    opt result = execute();
     if (option_verbose) {
         write_sexpr(stdout, result);
         printf("\n");

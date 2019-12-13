@@ -1,6 +1,6 @@
 ;; debug
 (%abort 0 #f)
-(%prn 0 #t)
+(%prn 1 #t)
 
 ;; 6.1
 (eq? 2 #f)

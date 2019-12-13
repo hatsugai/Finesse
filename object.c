@@ -158,10 +158,11 @@ void sweep_extres(void)
     }
 }
 
-void gc(vm_context *vm)
+void gc(void)
 {
     uint_t *tospace;
     uint_t *scan;
+    extern vm_context *vm_list;
 
     if (heap == heap0) {
         tospace = heap1;
@@ -173,18 +174,25 @@ void gc(vm_context *vm)
     /* copy roots */
     symbol_htvec = gc_copy(symbol_htvec);
     global_env_htvec = gc_copy(global_env_htvec);
-    vm->reg = gc_copy(vm->reg);
-    vm->cur_closure = gc_copy(vm->cur_closure);
-    vm->code = gc_copy(vm->code);
     opt *sup = isp;
     for (opt *p = istack; p < sup; ++p)
         *p = gc_copy(*p);
-    sup = vm->stack + STACK_LENGTH;
-    for (opt *p = vm->sp; p < sup; ++p)
-        *p = gc_copy(*p);
-    sup = vm->cstack + CSTACK_LENGTH;
-    for (opt *p = vm->csp; p < sup; ++p)
-        *p = gc_copy(*p);
+
+    for (vm_context *vm = vm_list; ; ) {
+        vm->reg = gc_copy(vm->reg);
+        vm->cur_closure = gc_copy(vm->cur_closure);
+        vm->code = gc_copy(vm->code);
+        sup = vm->stack + STACK_LENGTH;
+        for (opt *p = vm->sp; p < sup; ++p)
+            *p = gc_copy(*p);
+        sup = vm->cstack + CSTACK_LENGTH;
+        for (opt *p = vm->csp; p < sup; ++p)
+            *p = gc_copy(*p);
+
+        vm = vm->next;
+        if (vm == vm_list)
+            break;
+    }
 
     g_drive_proc = gc_copy(g_drive_proc);
     g_drive_argv = gc_copy(g_drive_argv);
@@ -220,10 +228,10 @@ void gc(vm_context *vm)
     fprintf(stderr, "GC %.1f\n", x * 100.0);
 }
 
-uint_t *obj_alloc(vm_context *vm, uint_t length)
+uint_t *obj_alloc(uint_t length)
 {
     if (heap_cur + length > heap_sup) {
-        gc(vm);
+        gc();
         if (heap_cur + length > heap_sup) {
             fprintf(stderr, "heap exhausted\n");
             abort();
@@ -243,27 +251,27 @@ void init_object_space(void)
     heap_cur = heap;
 }
 
-object_header *vobj_alloc(vm_context *vm, uint_t length)
+object_header *vobj_alloc(uint_t length)
 {
-    return (object_header *)obj_alloc(vm, length + HEADER_LENGTH);
+    return (object_header *)obj_alloc(length + HEADER_LENGTH);
 }
 
-object_header *bvobj_alloc(vm_context *vm, uint_t length)
+object_header *bvobj_alloc(uint_t length)
 {
     uint_t wlen = (length + sizeof(uint_t) - 1) / sizeof(uint_t);
-    return (object_header *)obj_alloc(vm, wlen + HEADER_LENGTH);
+    return (object_header *)obj_alloc(wlen + HEADER_LENGTH);
 }
 
-opt make_pair(vm_context *vm)
+opt make_pair(void)
 {
-    return add_tag_pair(obj_alloc(vm, 2));
+    return add_tag_pair(obj_alloc(2));
 }
 
-opt cons(vm_context *vm, opt x, opt y)
+opt cons(opt x, opt y)
 {
     ipush(x);
     ipush(y);
-    opt p = make_pair(vm);
+    opt p = make_pair();
     y = ipop();
     x = ipop();
     set_car(p, x);
@@ -271,60 +279,60 @@ opt cons(vm_context *vm, opt x, opt y)
     return p;
 }
 
-opt make_box(vm_context *vm, opt o)
+opt make_box(opt o)
 {
     ipush(o);
-    opt p = make_pair(vm);
+    opt p = make_pair();
     o = ipop();
     set_car(p, o);
     set_cdr(p, OPT_NIL);
     return p;
 }
 
-opt make_closure(vm_context *vm, uint_t num_closed)
+opt make_closure(uint_t num_closed)
 {
-    object_header *p = vobj_alloc(vm, num_closed + 1); /* for code */
+    object_header *p = vobj_alloc(num_closed + 1); /* for code */
     p->header = ((num_closed + 1) << BITS_FLAGS) | TYPE_CLOSURE;
     return add_tag_closure(p);
 }
 
-opt make_vector(vm_context *vm, uint_t length)
+opt make_vector(uint_t length)
 {
     if (length == 0) {
         return add_tag_object(&vector0);
     } else {
-        object_header *p = vobj_alloc(vm, length);
+        object_header *p = vobj_alloc(length);
         p->header = (length << BITS_FLAGS) | TYPE_VECTOR;
         return add_tag_object(p);
     }
 }
 
-opt make_bytevector(vm_context *vm, uint_t length)
+opt make_bytevector(uint_t length)
 {
     if (length == 0) {
         return add_tag_object(&bytevector0);
     } else {
-        object_header *p = bvobj_alloc(vm, length);
+        object_header *p = bvobj_alloc(length);
         p->header = (length << BITS_FLAGS) | TYPE_BYTEVECTOR;
         return add_tag_object(p);
     }
 }
 
-opt make_string(vm_context *vm, uint_t length)
+opt make_string(uint_t length)
 {
     if (length == 0) {
         return add_tag_object(&string0);
     } else {
-        object_header *p = bvobj_alloc(vm, length);
+        object_header *p = bvobj_alloc(length);
         p->header = (length << BITS_FLAGS) | TYPE_STRING;
         return add_tag_object(p);
     }
 }
 
-opt make_symbol(vm_context *vm, opt str)
+opt make_symbol(opt str)
 {
     ipush(str);
-    object_header *p = vobj_alloc(vm, SYMBOL_LENGTH);
+    object_header *p = vobj_alloc(SYMBOL_LENGTH);
     str = ipop();
     p->header = TYPE_SYMBOL;
     symbol_name_set(p, str);

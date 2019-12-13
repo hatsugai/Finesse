@@ -18,7 +18,8 @@
 	SHIFTJUMP
 	ENTER
 	ENTER_REST
-	RETURN))
+	RETURN
+    AMB))
 
 (define (for-each/index proc xs)
   (let loop ((xs xs) (k 0))

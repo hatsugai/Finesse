@@ -341,7 +341,7 @@ opt builtin_pair_QUES_(vm_context *vm, unsigned argc, const opt *argv)
 
 opt builtin_cons(vm_context *vm, unsigned argc, const opt *argv)
 {
-    return cons(vm, arg(0), arg(1));
+    return cons(arg(0), arg(1));
 }
 
 opt builtin_car(vm_context *vm, unsigned argc, const opt *argv)
@@ -388,7 +388,7 @@ opt builtin_string_MINUS__GRE_symbol(vm_context *vm, unsigned argc, const opt *a
     object_header *hp = ptr_to_header(p);
     uint_t length = string_length(hp);
     char *s = string_v(hp);
-    return find_symbol(vm, s, length, true);
+    return find_symbol(s, length, true);
 }
 
 opt builtin_char_QUES_(vm_context *vm, unsigned argc, const opt *argv)
@@ -420,7 +420,7 @@ opt builtin_make_MINUS_string(vm_context *vm, unsigned argc, const opt *argv)
     xassert_fixnum(arg(0));
     int_t length = fixnum_value(arg(0));
     xassert(length >= 0 && length <= MAX_LENGTH_STRING, "invalid length");
-    opt s = make_string(vm, length);
+    opt s = make_string(length);
     if (argc == 1)
       return s;
     else {
@@ -483,7 +483,7 @@ opt builtin_make_MINUS_vector(vm_context *vm, unsigned argc, const opt *argv)
     xassert_fixnum(arg(0));
     int_t length = fixnum_value(arg(0));
     xassert(length >= 0 && length <= MAX_LENGTH_VECTOR, "invalid length");
-    opt p = make_vector(vm, length);
+    opt p = make_vector(length);
     if (argc == 1)
       return p;
     else {
@@ -537,7 +537,7 @@ opt builtin_make_MINUS_bytevector(vm_context *vm, unsigned argc, const opt *argv
     xassert_fixnum(arg(0));
     int_t length = fixnum_value(arg(0));
     xassert(length >= 0 && length <= MAX_LENGTH_BYTEVECTOR, "invalid length");
-    opt p = make_bytevector(vm, length);
+    opt p = make_bytevector(length);
     if (argc == 1)
       return p;
     else {
@@ -623,22 +623,22 @@ opt builtin_call_SL_cc(vm_context *vm, unsigned argc, const opt *argv)
 {
     /* make stack copy */
     size_t stack_length = (vm->stack + STACK_LENGTH) - vm->sp;
-    opt stack_save = make_vector(vm, stack_length);
+    opt stack_save = make_vector(stack_length);
     memcpy(vector_v(ptr_to_header(stack_save)), vm->sp, stack_length * sizeof(opt));
     size_t cstack_length = (vm->cstack + CSTACK_LENGTH) - vm->csp;
     ipush(stack_save);
-    opt cstack_save = make_vector(vm, cstack_length);
+    opt cstack_save = make_vector(cstack_length);
     memcpy(vector_v(ptr_to_header(cstack_save)), vm->csp, cstack_length * sizeof(opt));
     ipush(cstack_save);
 
     /* make continuation procedure */
-    opt code = make_vector(vm, 4);
+    opt code = make_vector(4);
     vset(code, 0, make_fixnum(VMI_BUILTIN));
     vset(code, 1, make_fixnum(PRIMITIVE_NO_sys_resume_cont));
     vset(code, 2, make_fixnum(1)); /* num_params */
     vset(code, 3, OPT_FALSE);      /* rest? */
     ipush(code);
-    opt closure = make_closure(vm, 2);
+    opt closure = make_closure(2);
     vset(closure, 0, ipop());   /* code */
     vset(closure, 2, ipop());   /* cstack save */
     vset(closure, 1, ipop());   /* stack save */

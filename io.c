@@ -11,7 +11,7 @@ uint_t string_hash(const char *s, uint_t len)
     return hv;
 }
 
-opt find_symbol(vm_context *vm, const char *s, uint_t length, bool create)
+opt find_symbol(const char *s, uint_t length, bool create)
 {
     object_header *hp = ptr_to_header(symbol_htvec);
     opt *v = vector_v(hp);
@@ -29,19 +29,19 @@ opt find_symbol(vm_context *vm, const char *s, uint_t length, bool create)
     }
 
     if (create) {
-        opt str = make_string(vm, length);
+        opt str = make_string(length);
         memcpy(string_v(ptr_to_header(str)), s, length);
-        opt sym = make_symbol(vm, str);
-        v[k] = cons(vm, sym, v[k]);
+        opt sym = make_symbol(str);
+        v[k] = cons(sym, v[k]);
         return sym;
     } else {
         return OPT_FALSE;
     }
 }
 
-opt make_symbol_for_reader(vm_context *vm, const char *s, uint_t length)
+opt make_symbol_for_reader(const char *s, uint_t length)
 {
-    return find_symbol(vm, s, length, true);
+    return find_symbol(s, length, true);
 }
 
 uint_t list_length(opt p, bool *p_dotted)
@@ -57,7 +57,7 @@ uint_t list_length(opt p, bool *p_dotted)
     return c;
 }
 
-opt list_to_vector(vm_context *vm, opt p)
+opt list_to_vector(opt p)
 {
     uint_t length;
     bool dotted;
@@ -65,7 +65,7 @@ opt list_to_vector(vm_context *vm, opt p)
     if (dotted)
       error("invalid vector");
     ipush(p);
-    opt v = make_vector(vm, length);
+    opt v = make_vector(length);
     p = ipop();
     for (uint_t i = 0; i < length; ++i) {
         vset(v, i, car(p));
@@ -74,7 +74,7 @@ opt list_to_vector(vm_context *vm, opt p)
     return v;
 }
 
-opt list_to_bytevector(vm_context *vm, opt p)
+opt list_to_bytevector(opt p)
 {
     /* check bytes */
     opt q;
@@ -91,7 +91,7 @@ opt list_to_bytevector(vm_context *vm, opt p)
       error("invalid bytevector");
 
     ipush(p);
-    opt bv = make_bytevector(vm, length);
+    opt bv = make_bytevector(length);
     p = ipop();
     uint8_t *v = bytevector_v(ptr_to_header(bv));
     for (uint_t i = 0; i < length; ++i) {
@@ -141,7 +141,7 @@ bool strchr_until(const char *start, const char *end, int c)
     return false;
 }
 
-opt read_atom(vm_context *vm, int c, FILE *fp)
+opt read_atom(int c, FILE *fp)
 {
     char buf[MAX_TOKEN_LENGTH];
     int i;
@@ -170,10 +170,10 @@ opt read_atom(vm_context *vm, int c, FILE *fp)
             }
         }
     }
-    return make_symbol_for_reader(vm, buf, i);
+    return make_symbol_for_reader(buf, i);
 }
 
-opt read_string(vm_context *vm, FILE *fp)
+opt read_string(FILE *fp)
 {
     char buf[MAX_TOKEN_LENGTH];
     int i = 0;
@@ -192,12 +192,12 @@ opt read_string(vm_context *vm, FILE *fp)
       error("too long string");
     if (c == EOF)
       error("missing '\"'");
-    opt p = make_string(vm, i);
+    opt p = make_string(i);
     memcpy(string_v(ptr_to_header(p)), buf, i);
     return p;
 }
 
-opt read_special(vm_context *vm, FILE *fp)
+opt read_special(FILE *fp)
 {
     int c = getc(fp);
     if (c == EOF) {
@@ -208,16 +208,16 @@ opt read_special(vm_context *vm, FILE *fp)
         return OPT_TRUE;
     } else if (c == '(') {      /* vector */
         ungetc(c, fp);
-        opt p = read_sexpr(vm, fp);
-        return list_to_vector(vm, p);
+        opt p = read_sexpr(fp);
+        return list_to_vector(p);
     } else if (c == 'u') {      /* bytevector */
         c = getc(fp);
         if (c == '8') {
             c = getc(fp);
             if (c == '(') {
                 ungetc(c, fp);
-                opt p = read_sexpr(vm, fp);
-                return list_to_bytevector(vm, p);
+                opt p = read_sexpr(fp);
+                return list_to_bytevector(p);
             }
         }
         error("invalid token: '%c'", c);
@@ -227,10 +227,10 @@ opt read_special(vm_context *vm, FILE *fp)
     return OPT_FALSE;           /* to avoid warning */
 }
 
-opt read_list(vm_context *vm, int c, FILE *fp)
+opt read_list(int c, FILE *fp)
 {
-    opt p = read_sexpr(vm, fp);
-    opt head = cons(vm, p, OPT_NIL);
+    opt p = read_sexpr(fp);
+    opt head = cons(p, OPT_NIL);
     opt tail = head;
     ipush(head);
     while (true) {
@@ -240,7 +240,7 @@ opt read_list(vm_context *vm, int c, FILE *fp)
             break;
         } else if (c == '.') {
             ipush(tail);
-            p = read_sexpr(vm, fp);
+            p = read_sexpr(fp);
             tail = ipop();
             set_cdr(tail, p);
             c = get_vchar(fp);
@@ -250,8 +250,8 @@ opt read_list(vm_context *vm, int c, FILE *fp)
         } else {
             ungetc(c, fp);
             ipush(tail);
-            p = read_sexpr(vm, fp);
-            p = cons(vm, p, OPT_NIL);
+            p = read_sexpr(fp);
+            p = cons(p, OPT_NIL);
             tail = ipop();
             set_cdr(tail, p);
             tail = p;
@@ -261,7 +261,7 @@ opt read_list(vm_context *vm, int c, FILE *fp)
     return head;
 }
 
-opt read_sexpr(vm_context *vm, FILE *fp)
+opt read_sexpr(FILE *fp)
 {
     int c;
     c = get_vchar(fp);
@@ -273,17 +273,17 @@ opt read_sexpr(vm_context *vm, FILE *fp)
             return OPT_NIL;
         } else {
             ungetc(c, fp);
-            return read_list(vm, c, fp);
+            return read_list(c, fp);
         }
     } else if (c == '#') {
-        return read_special(vm, fp);
+        return read_special(fp);
     } else if (c == '"') {
-        return read_string(vm, fp);
+        return read_string(fp);
     } else if (c == ')') {
         error("unexpected ')'");
         return OPT_FALSE;
     } else {
-        return read_atom(vm, c, fp);
+        return read_atom(c, fp);
     }
 }
 

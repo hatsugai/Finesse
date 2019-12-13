@@ -33,6 +33,7 @@ typedef intptr_t int_t;
 typedef uintptr_t uint_t;
 #define PRI_d "ld"
 #define PRI_u "lu"
+#define PRI_x "lx"
 
 typedef struct object *opt;
 
@@ -274,17 +275,21 @@ static void vset(opt p, int_t k, opt q) {
 }
 
 /* vm context */
-typedef struct {
-  opt reg;
-  opt cur_closure;
-  opt code;
-  opt *sp;
-  opt *fp;
-  opt *csp;
-  uint_t r_num_args;
-  opt *stack;
-  opt *cstack;
-} vm_context;
+typedef struct vm_context vm_context;
+struct vm_context {
+    vm_context *next;
+    vm_context *prev;
+    opt reg;
+    opt cur_closure;
+    opt code;
+    opt *sp;
+    opt *fp;
+    opt *csp;
+    opt *csp_sup;
+    uint_t r_num_args;
+    opt *stack;
+    opt *cstack;
+};
 
 typedef opt (*pf_builtin_t)(vm_context *vm, unsigned argc, const opt *argv);
 extern pf_builtin_t builtin_procedure[];
@@ -364,37 +369,31 @@ static inline opt ipop(void) {
 }
 
 void init_istack(void);
-void init_environments(vm_context *vm);
-void init_vm_context(vm_context *vm);
+void init_environments(void);
+void init_vm(const char *sym_name);
 void init_object_space(void);
-void init_load(vm_context *vm, const char *filename, bool b_init_path);
-opt call_thunk(vm_context *vm, const char *sym_name);
-void drive(void);
+void init_load(const char *filename, bool b_init_path);
+opt execute(void);
 
-uint_t *obj_alloc(vm_context *vm, uint_t length);
-object_header *vobj_alloc(vm_context *vm, uint_t length);
-object_header *bvobj_alloc(vm_context *vm, uint_t length);
-opt cons(vm_context *vm, opt p, opt q);
-opt make_box(vm_context *vm, opt o);
-opt make_vector(vm_context *vm, uint_t length);
-opt make_closure(vm_context *vm, uint_t num_closed);
-opt make_symbol(vm_context *vm, opt string);
-opt make_bytevector(vm_context *vm, uint_t length);
-opt make_string(vm_context *vm, uint_t length);
+uint_t *obj_alloc(uint_t length);
+object_header *vobj_alloc(uint_t length);
+object_header *bvobj_alloc(uint_t length);
+opt cons(opt p, opt q);
+opt make_box(opt o);
+opt make_vector(uint_t length);
+opt make_closure(uint_t num_closed);
+opt make_symbol(opt string);
+opt make_bytevector(uint_t length);
+opt make_string(uint_t length);
 
 uint_t string_hash(const char *s, uint_t len);
-opt make_symbol_for_reader(vm_context *vm, const char *s, uint_t length);
-opt find_symbol(vm_context *vm, const char *s, uint_t length, bool create);
+opt make_symbol_for_reader(const char *s, uint_t length);
+opt find_symbol(const char *s, uint_t length, bool create);
 
-opt read_sexpr(vm_context *vm, FILE *fp);
+opt read_sexpr(FILE *fp);
 void write_sexpr(FILE *fp, opt p);
-opt list_to_vector(vm_context *vm, opt p);
-opt list_to_bytevector(vm_context *vm, opt p);
-
-void register_extres_type(int extres_type, extres_finalize_t finalize);
-
-void init_vm_0(void);
-void init_vm_1(const char *path);
+opt list_to_vector(opt p);
+opt list_to_bytevector(opt p);
 
 static inline void xassert_fixnum(opt p) {
     xassert(is_fixnum(p), "not integer");

@@ -57,3 +57,15 @@
 (define (error msg . r)
   (apply %prn "error: " msg r)
   (%abort))
+
+(define (= x y) (eq? x y))
+(define (not x) (if x #f #t))
+
+(define (memq x xs)
+  (if (null? xs)
+      #f
+      (if (eq? x (car xs))
+          xs
+          (memq x (cdr xs)))))
+
+(define (memv x xs) (memq x xs))
