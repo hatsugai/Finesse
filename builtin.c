@@ -52,7 +52,7 @@ opt name ## _flonum(double x, unsigned i, unsigned argc, const opt *argv) \
             error("not number");                                          \
             return OPT_FALSE;                                             \
         }                                                                 \
-        if (x < y) {                                                      \
+        if (x op y) {                                                     \
         } else {                                                          \
             return OPT_FALSE;                                             \
         }                                                                 \
@@ -65,7 +65,7 @@ opt name ## _fixnum(int_t k, unsigned i, unsigned argc, const opt *argv)  \
     for ( ; i < argc; ++i) {                                              \
         opt p = arg(i);                                                   \
         if (is_fixnum(p)) {                                               \
-            if (k < fixnum_value(p)) {                                    \
+            if (k op fixnum_value(p)) {                                   \
             } else {                                                      \
                 return OPT_FALSE;                                         \
             }                                                             \
