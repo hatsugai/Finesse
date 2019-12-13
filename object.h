@@ -27,6 +27,8 @@ enum extres_type {
 
 #define MAX_TOKEN_LENGTH    256
 
+/* assume sizeof(void *) == sizeof(uintptr_t) */
+
 typedef intptr_t int_t;
 typedef uintptr_t uint_t;
 #define PRI_d "ld"
@@ -93,40 +95,80 @@ static inline bool is_fixnum(opt p) { return (uint_t)p & 1; }
 static inline int_t fixnum_value(opt p) { return (int_t)p >> 1; }
 static inline opt make_fixnum(int_t k) { return (opt)((k << 1) | 1); }
 
-static inline bool is_pair(opt p) { return ((uint_t)p & MASK_TAG_PTR) == TAG_PAIR; }
-static inline bool is_closure(opt p) { return ((uint_t)p & MASK_TAG_PTR) == TAG_CLOSURE; }
-static inline bool is_object(opt p) { return ((uint_t)p & MASK_TAG_PTR) == TAG_OBJECT; }
+static inline bool is_pair(opt p) {
+    return ((uint_t)p & MASK_TAG_PTR) == TAG_PAIR;
+}
+
+static inline bool is_closure(opt p) {
+    return ((uint_t)p & MASK_TAG_PTR) == TAG_CLOSURE;
+}
+
+static inline bool is_object(opt p) {
+    return ((uint_t)p & MASK_TAG_PTR) == TAG_OBJECT;
+}
 
 static inline opt copy_tag(void *p, opt q) {
     return (opt)((uint_t)p | ((uint_t)q & MASK_TAG_PTR));
 }
 
-static inline opt add_tag_pair(uint_t *p) { return (opt)((uint_t)p | TAG_PAIR); }
-static inline opt add_tag_closure(object_header *p) { return (opt)((uint_t)p | TAG_CLOSURE); }
-static inline opt add_tag_object(object_header *p) { return (opt)((uint_t)p | TAG_OBJECT); }
+static inline opt add_tag_pair(uint_t *p) {
+    return (opt)((uint_t)p | TAG_PAIR);
+}
 
-static inline bool is_flonum(opt p) { return ((uint_t)p & MASK_TAG_FLONUM) == TAG_FLONUM; }
+static inline opt add_tag_closure(object_header *p) {
+    return (opt)((uint_t)p | TAG_CLOSURE);
+}
+
+static inline opt add_tag_object(object_header *p) {
+    return (opt)((uint_t)p | TAG_OBJECT);
+}
+
+static inline bool is_flonum(opt p) {
+    return ((uint_t)p & MASK_TAG_FLONUM) == TAG_FLONUM;
+}
+
 static inline double flonum_value(opt o) {
-	uint_t u = (uint_t)o & ~MASK_TAG_FLONUM;
-	return *(double *)&u;
+    uint_t u = (uint_t)o & ~MASK_TAG_FLONUM;
+    return *(double *)&u;
 }
+
 static inline opt make_flonum(double x) {
-	uint_t k = *(uint_t *)&x;
-	return (opt)((k & ~MASK_TAG_FLONUM) | TAG_FLONUM);
+    uint_t k = *(uint_t *)&x;
+    return (opt)((k & ~MASK_TAG_FLONUM) | TAG_FLONUM);
 }
 
-static inline bool is_immediate(opt p) { return ((uint_t)p & MASK_TAG_IMM) == TAG_IMMEDIATE; }
-static inline bool is_header(uint_t h) { return (h & MASK_TAG_IMM) == TAG_HEADER; }
+static inline bool is_immediate(opt p) {
+    return ((uint_t)p & MASK_TAG_IMM) == TAG_IMMEDIATE;
+}
 
-static inline bool is_relocmark(opt p) { return ((uint_t)p & MASK_IMM_TYPE) == TAG_RELOCMARK; }
-static inline bool marked_p(object_header *p) { return p->header & BIT_RELOCMARK; }
-static inline bool fixedloc_p(object_header *p) { return p->header & BIT_FIXEDLOC; }
+static inline bool is_header(uint_t h) {
+    return (h & MASK_TAG_IMM) == TAG_HEADER;
+}
+
+static inline bool is_relocmark(opt p) {
+    return ((uint_t)p & MASK_IMM_TYPE) == TAG_RELOCMARK;
+}
+
+static inline bool marked_p(object_header *p) {
+    return p->header & BIT_RELOCMARK;
+}
+
+static inline bool fixedloc_p(object_header *p) {
+    return p->header & BIT_FIXEDLOC;
+}
+
 static inline void mark(object_header *p) { p->header |= BIT_RELOCMARK; }
 static inline void unmark(object_header *p) { p->header &= ~BIT_RELOCMARK; }
 
-static inline bool is_char(opt p) { return ((uint_t)p & MASK_IMM_TYPE) == TAG_CHAR; }
+static inline bool is_char(opt p) {
+    return ((uint_t)p & MASK_IMM_TYPE) == TAG_CHAR;
+}
+
 static inline uint_t char_value(opt p) { return (uint_t)p >> BITS_IMM_TYPE; }
-static inline opt make_char(uint_t c) { return (opt)((c << BITS_IMM_TYPE) | TAG_CHAR); }
+
+static inline opt make_char(uint_t c) {
+    return (opt)((c << BITS_IMM_TYPE) | TAG_CHAR);
+}
 
 /*
   extres
@@ -146,30 +188,41 @@ typedef bool (*extres_finalize_t)(void *);
 typedef struct extres_book extres_book_t;
 
 struct extres_book {
-	extres_t **vector;
-	extres_t *list;
-	extres_t *free;
+    extres_t **vector;
+    extres_t *list;
+    extres_t *free;
     extres_finalize_t finalize;
-	unsigned watermark;
-	unsigned size;
-	unsigned count;
+    unsigned watermark;
+    unsigned size;
+    unsigned count;
 };
 
 /*   LSB | tag:8 | type:8 | id:48 | MSB */
 #define EXTRES_BITS_TYPE 8
 #define EXTRES_MASK_TYPE ((1 << EXTRES_BITS_TYPE) - 1)
-static inline bool is_extres(opt p) { return ((uint_t)p & MASK_IMM_TYPE) == TAG_EXTRES; }
-static inline uint_t extres_type(opt p) { return ((uint_t)p >> BITS_IMM_TYPE) & EXTRES_MASK_TYPE; }
-static inline uint_t extres_id(opt p) { return (uint_t)p >> (BITS_IMM_TYPE + EXTRES_BITS_TYPE); }
+
+static inline bool is_extres(opt p) {
+    return ((uint_t)p & MASK_IMM_TYPE) == TAG_EXTRES;
+}
+
+static inline uint_t extres_type(opt p) {
+    return ((uint_t)p >> BITS_IMM_TYPE) & EXTRES_MASK_TYPE;
+}
+
+static inline uint_t extres_id(opt p) {
+    return (uint_t)p >> (BITS_IMM_TYPE + EXTRES_BITS_TYPE);
+}
+
 static inline opt make_extres(uint_t type, uint_t id) {
-	return (opt)((((id << EXTRES_BITS_TYPE) | type) << BITS_IMM_TYPE) | TAG_EXTRES);
+    return (opt)
+        ((((id << EXTRES_BITS_TYPE) | type) << BITS_IMM_TYPE) | TAG_EXTRES);
 }
 
 extern extres_book_t extres_book_table[];
 
 static inline void *extres_get(int type, unsigned i)
 {
-	return extres_book_table[type].vector[i]->object;
+    return extres_book_table[type].vector[i]->object;
 }
 
 static inline void extres_mark(extres_book_t *bp, unsigned i)
@@ -196,24 +249,29 @@ static object_header *ptr_to_header(opt p) {
 }
 
 static inline bool is_vector(const object_header *p) {
-	return (p->header & MASK_TYPE) == TYPE_VECTOR; }
+    return (p->header & MASK_TYPE) == TYPE_VECTOR; }
 static inline bool is_closure_obj(const object_header *p) {
-	return (p->header & MASK_TYPE) == TYPE_CLOSURE; }
+    return (p->header & MASK_TYPE) == TYPE_CLOSURE; }
 static inline bool is_symbol(const object_header *p) {
-	return (p->header & MASK_TYPE) == TYPE_SYMBOL; }
+    return (p->header & MASK_TYPE) == TYPE_SYMBOL; }
 static inline bool is_record(const object_header *p) {
-	return (p->header & MASK_TYPE) == TYPE_RECORD; }
+    return (p->header & MASK_TYPE) == TYPE_RECORD; }
 static inline bool is_string(const object_header *p) {
-	return (p->header & MASK_TYPE) == TYPE_STRING; }
+    return (p->header & MASK_TYPE) == TYPE_STRING; }
 static inline bool is_bytevector(const object_header *p) {
-	return (p->header & MASK_TYPE) == TYPE_BYTEVECTOR; }
+    return (p->header & MASK_TYPE) == TYPE_BYTEVECTOR; }
 
 static inline bool is_vector_like(const object_header *hp) {
-	return !is_bytevector(hp) && !is_string(hp);
+    return !is_bytevector(hp) && !is_string(hp);
 }
 
-static opt vref(opt p, int_t k) { return *((opt *)(ptr_to_header(p) + 1) + k); }
-static void vset(opt p, int_t k, opt q) { *((opt *)(ptr_to_header(p) + 1) + k) = q; }
+static opt vref(opt p, int_t k) {
+    return *((opt *)(ptr_to_header(p) + 1) + k);
+}
+
+static void vset(opt p, int_t k, opt q) {
+    *((opt *)(ptr_to_header(p) + 1) + k) = q;
+}
 
 /* vm context */
 typedef struct {
@@ -234,38 +292,53 @@ extern pf_builtin_t builtin_procedure[];
 void error(const char *msg, ...);
 
 static inline void check_num_args(unsigned num_args, unsigned expected) {
-	if (num_args != expected)
-	  error("wrong num of args");
+    if (num_args != expected)
+      error("wrong num of args");
 }
 
 static inline void xassert(bool b, const char *msg) {
-	if (!b)
-	  error(msg);
+    if (!b)
+      error(msg);
 }
 
 
 #define MAX_LENGTH_VECTOR (1 << 24)
-static inline uint_t vector_length(const object_header *p) { return p->header >> BITS_FLAGS; }
+static inline uint_t vector_length(const object_header *p) {
+    return p->header >> BITS_FLAGS;
+}
+
 static inline opt *vector_v(object_header *p) { return (opt *)(p + 1); }
 
 #define MAX_LENGTH_CLOSURE (1 << 24)
-static inline uint_t closure_length(const object_header *p) { return p->header >> BITS_FLAGS; }
+static inline uint_t closure_length(const object_header *p) {
+    return p->header >> BITS_FLAGS;
+}
 static inline opt *closure_v(object_header *p) { return (opt *)(p + 1); }
 
 #define MAX_LENGTH_RECORD (1 << 24)
-static inline uint_t record_length(const object_header *p) { return p->header >> BITS_FLAGS; }
+static inline uint_t record_length(const object_header *p) {
+    return p->header >> BITS_FLAGS;
+}
 static inline opt *record_v(object_header *p) { return (opt *)(p + 1); }
 
 #define SYMBOL_LENGTH 1
-static inline void symbol_name_set(object_header *p, opt s) { *(opt *)(p + 1) = s; }
+static inline void symbol_name_set(object_header *p, opt s) {
+    *(opt *)(p + 1) = s;
+}
 static inline opt symbol_name(opt sym) { return vref(sym, 0); }
 
 #define MAX_LENGTH_BYTEVECTOR (1 << 24)
-static inline uint_t bytevector_length(const object_header *p) { return p->header >> BITS_FLAGS; }
-static inline uint8_t *bytevector_v(object_header *p) { return (uint8_t *)(p + 1); }
+static inline uint_t bytevector_length(const object_header *p) {
+    return p->header >> BITS_FLAGS;
+}
+static inline uint8_t *bytevector_v(object_header *p) {
+    return (uint8_t *)(p + 1);
+}
 
 #define MAX_LENGTH_STRING (1 << 24)
-static inline uint_t string_length(const object_header *p) { return p->header >> BITS_FLAGS; }
+static inline uint_t string_length(const object_header *p) {
+    return p->header >> BITS_FLAGS;
+}
 static inline char *string_v(object_header *p) { return (char *)(p + 1); }
 
 extern opt *istack;
@@ -281,13 +354,13 @@ extern bool option_debug;
 extern bool option_verbose;
 
 static inline void ipush(opt p) {
-	assert(isp < isp_sup);
-	*isp++ = p;
+    assert(isp < isp_sup);
+    *isp++ = p;
 }
 
 static inline opt ipop(void) {
-	assert(isp > istack);
-	return *--isp;
+    assert(isp > istack);
+    return *--isp;
 }
 
 void init_istack(void);
@@ -320,41 +393,44 @@ opt list_to_bytevector(vm_context *vm, opt p);
 
 void register_extres_type(int extres_type, extres_finalize_t finalize);
 
+void init_vm_0(void);
+void init_vm_1(const char *path);
+
 static inline void xassert_fixnum(opt p) {
-	xassert(is_fixnum(p), "not integer");
+    xassert(is_fixnum(p), "not integer");
 }
 static inline void xassert_flonum(opt p) {
-	xassert(is_flonum(p), "not real number");
+    xassert(is_flonum(p), "not real number");
 }
 static inline void xassert_char(opt p) {
-	xassert(is_char(p), "not char");
+    xassert(is_char(p), "not char");
 }
 static inline void xassert_extres(int type, opt p) {
-	xassert(is_extres(p) && extres_type(p) == type, "not extres");
+    xassert(is_extres(p) && extres_type(p) == type, "not extres");
 }
 static inline void xassert_pair(opt p) {
-	xassert(is_pair(p), "not pair");
+    xassert(is_pair(p), "not pair");
 }
 static inline void xassert_box(opt p) {
-	xassert(is_box(p), "not box");
+    xassert(is_box(p), "not box");
 }
 static inline void xassert_string(opt p) {
-	xassert(is_object(p) && is_string(ptr_to_header(p)), "not string");
+    xassert(is_object(p) && is_string(ptr_to_header(p)), "not string");
 }
 static inline void xassert_symbol(opt p) {
-	xassert(is_object(p) && is_symbol(ptr_to_header(p)), "not symbol");
+    xassert(is_object(p) && is_symbol(ptr_to_header(p)), "not symbol");
 }
 static inline void xassert_vector(opt p) {
-	xassert(is_object(p) && is_vector(ptr_to_header(p)), "not vector");
+    xassert(is_object(p) && is_vector(ptr_to_header(p)), "not vector");
 }
 static inline void xassert_closure(opt p) {
-	xassert(is_closure(p), "not closure");
+    xassert(is_closure(p), "not closure");
 }
 static inline void xassert_bytevector(opt p) {
-	xassert(is_object(p) && is_bytevector(ptr_to_header(p)), "not bytevector");
+    xassert(is_object(p) && is_bytevector(ptr_to_header(p)), "not bytevector");
 }
 static inline void xassert_real(opt p) {
-	xassert(is_fixnum(p) || is_flonum(p), "not real");
+    xassert(is_fixnum(p) || is_flonum(p), "not real");
 }
 
 static inline opt *get_argv(void)
@@ -369,10 +445,10 @@ static inline opt arg_ref(unsigned k, unsigned argc, const opt *argv) {
 #define arg(k) arg_ref((k), argc, argv)
 
 static inline double real_value(opt p) {
-	if (is_fixnum(p))
-	  return fixnum_value(p);
-	else
-	  return flonum_value(p);
+    if (is_fixnum(p))
+      return fixnum_value(p);
+    else
+      return flonum_value(p);
 }
 
 #ifdef __GNUC__

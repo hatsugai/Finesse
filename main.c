@@ -6,14 +6,14 @@ extern vm_context vm;
 
 int analize_options(int argc, char *argv[])
 {
-	int i = 1;
-	while (i < argc) {
-		if (strcmp(argv[i], "-d") == 0) {
-			option_debug = true;
-			i++;
+    int i = 1;
+    while (i < argc) {
+        if (strcmp(argv[i], "-d") == 0) {
+            option_debug = true;
+            i++;
         } else if (strcmp(argv[i], "-v") == 0) {
-			option_verbose = true;
-			i++;
+            option_verbose = true;
+            i++;
         } else if (strcmp(argv[i], "-I") == 0) {
             if (i + 1 < argc) {
                 strcpy(init_path, argv[i + 1]);
@@ -26,41 +26,41 @@ int analize_options(int argc, char *argv[])
                 fprintf(stderr, "invalid -I option\n");
                 exit(1);
             }
-		} else {
-			break;
-		}
-	}
-	return i;
+        } else {
+            break;
+        }
+    }
+    return i;
 }
 
 int main(int argc, char *argv[])
 {
-	int i = analize_options(argc, argv);
+    int i = analize_options(argc, argv);
 
-	init_object_space();
-	init_istack();
-	init_environments(&vm);
-	init_vm_context(&vm);
+    init_object_space();
+    init_istack();
+    init_environments(&vm);
+    init_vm_context(&vm);
 
-	init_load(&vm, "builtin.init", true);
-	init_load(&vm, "base.init", true);
-	if (i == argc) {
-		init_load(&vm, "boot.init", true);
-	} else {
-		for ( ; i < argc; ++i) {
-			init_load(&vm, argv[i], false);
-		}
-	}
+    init_load(&vm, "builtin.init", true);
+    init_load(&vm, "base.init", true);
+    if (i == argc) {
+        init_load(&vm, "boot.init", true);
+    } else {
+        for ( ; i < argc; ++i) {
+            init_load(&vm, argv[i], false);
+        }
+    }
 
-	opt result = call_thunk(&vm, "main");
-	if (option_verbose) {
-		write_sexpr(stdout, result);
-		printf("\n");
-	}
+    opt result = call_thunk(&vm, "main");
+    if (option_verbose) {
+        write_sexpr(stdout, result);
+        printf("\n");
+    }
 
-	if (is_fixnum(result)) {
-		return fixnum_value(result);
-	} else {
-		return 1;
-	}
+    if (is_fixnum(result)) {
+        return fixnum_value(result);
+    } else {
+        return 1;
+    }
 }
