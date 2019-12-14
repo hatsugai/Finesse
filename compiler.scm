@@ -30,8 +30,6 @@
                   (compile-set! (cadr expr) (caddr expr) cenv next))
                  ((eq? tag 'begin)
                   (compile-begin (cdr expr) cenv next))
-                 ((eq? tag 'amb)
-                  (compile-amb (cdr expr) cenv next))
                  (else
                   (compile-application (car expr) (cdr expr) cenv next)))))
         (else
@@ -66,10 +64,6 @@
         (loop (cdr xs)
               (compile (car xs) cenv c))
         c)))
-
-(define (compile-amb xs cenv next)
-  (let ((cs (map (lambda (x) (compile x cenv next)) xs)))
-    (list->vector (cons VMI_AMB cs))))
 
 (define (compile-set! var expr cenv next)
   (compile-lookup
