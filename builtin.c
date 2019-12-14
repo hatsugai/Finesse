@@ -671,3 +671,17 @@ opt builtin_sys_resume_cont(vm_context *vm, unsigned argc, const opt *argv)
     vm->fp = vm->sp;
     return result;
 }
+
+opt builtin_fork_MINUS_thread(vm_context *vm, unsigned argc, const opt *argv)
+{
+    opt thunk = arg(0);
+    vm_context *vm_new = make_vm(thunk);
+    add_vm(vm_new);
+    return OPT_TRUE;
+}
+
+opt builtin_thread_MINUS_exit(vm_context *vm, unsigned argc, const opt *argv)
+{
+    vm->exit = true;
+    return OPT_TRUE;
+}

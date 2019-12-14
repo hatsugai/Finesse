@@ -77,3 +77,6 @@
       `((lambda () ,@xs))
       `(let (,(car bs))
          (let* ,(cdr bs) ,@xs))))
+
+(define-macro (amb . xs)
+  `(amb-par ,@(map (lambda (x) `(lambda () ,x)) xs)))

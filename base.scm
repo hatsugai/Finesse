@@ -69,3 +69,22 @@
           (memq x (cdr xs)))))
 
 (define (memv x xs) (memq x xs))
+
+(define (for-each f xs)
+  (let loop ((xs xs))
+    (if (null? xs)
+        #f
+        (begin
+          (f (car xs))
+          (loop (cdr xs))))))
+
+(define (amb-par . thunk-list)
+  (if (null? thunk-list)
+      (thread-exit 0)
+      (call/cc
+        (lambda (k)
+          (for-each
+            (lambda (thunk)
+              (fork-thread (lambda () (k (thunk)))))
+            (cdr thunk-list))
+          (k ((car thunk-list)))))))

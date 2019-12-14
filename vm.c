@@ -86,27 +86,6 @@ void print_stack(vm_context *vm)
 }
 #endif
 
-vm_context *clone_vm(vm_context *vm0)
-{
-    vm_context *vm = malloc(sizeof(vm_context));
-    vm->stack = malloc(STACK_LENGTH * sizeof(uint_t));
-    vm->cstack = malloc(CSTACK_LENGTH * sizeof(uint_t));
-
-    vm->reg         = vm0->reg;
-    vm->cur_closure = vm0->cur_closure;
-    vm->code        = vm0->code;
-    vm->sp          = vm->stack + (vm0->sp - vm0->stack);
-    vm->fp          = vm->stack + (vm0->fp - vm0->stack);
-    vm->csp_sup     = vm->cstack + CSTACK_LENGTH;
-    vm->csp         = vm->cstack + (vm0->csp - vm0->cstack);
-    vm->r_num_args  = vm0->r_num_args;
-
-    memcpy(vm->sp, vm0->sp, ((vm0->stack + STACK_LENGTH) - vm0->sp) * sizeof(uint_t));
-    memcpy(vm->csp, vm0->csp, ((vm0->cstack + CSTACK_LENGTH) - vm0->csp) * sizeof(uint_t));
-
-    return vm;
-}
-
 void add_vm(vm_context *vm)
 {
     vm->next = vm_list;
@@ -161,6 +140,10 @@ bool exec_step(vm_context *vm)
             (rest != OPT_FALSE && num_args + 1 < num_params))
             error("wrong num of args");
         vm->reg = (*builtin_procedure[k])(vm, num_args, vm->fp);
+        if (vm->exit) {
+            del_vm(vm);
+            return false;
+        }
         vm->sp = vm->fp + num_args;
         if (vm->csp == vm->csp_sup)
             return true;
@@ -346,25 +329,6 @@ bool exec_step(vm_context *vm)
         vm->csp += 3;
     }
     break;
-
-    case VMI_AMB:
-    {
-        int n = vector_length(ptr_to_header(vm->code));
-        if (n == 1) {           /* (amb) */
-            del_vm(vm);
-            return false;
-        } else {
-            for (int i = 2; i < n; ++i) {
-                vm_context *p = clone_vm(vm);
-                p->code = vref(vm->code, i);
-                add_vm(p);
-            }
-            vm->code = vref(vm->code, 1);
-            return false;
-        }
-    }
-    break;
-
     default:
         error("unknown instruction %d", instruction_code);
     }
@@ -424,15 +388,11 @@ opt symbol_value_from_nstring(const char *sym_name)
     return unbox(box);
 }
 
-void init_vm(const char *sym_name)
+vm_context *make_vm(opt thunk)
 {
-    opt thunk = symbol_value_from_nstring(sym_name);
-    xassert_closure(thunk);
-
     vm_context *vm = malloc(sizeof(vm_context));
     vm->stack = malloc(STACK_LENGTH * sizeof(uint_t));
     vm->cstack = malloc(CSTACK_LENGTH * sizeof(uint_t));
-
     vm->reg = OPT_FALSE;
     vm->cur_closure = thunk;
     vm->code = vref(thunk, 0);
@@ -441,7 +401,15 @@ void init_vm(const char *sym_name)
     vm->csp = vm->cstack + CSTACK_LENGTH;
     vm->csp_sup = vm->csp;
     vm->r_num_args = 0;
+    vm->exit = false;
+    return vm;
+}
 
+void init_vm(const char *sym_name)
+{
+    opt thunk = symbol_value_from_nstring(sym_name);
+    xassert_closure(thunk);
+    vm_context *vm = make_vm(thunk);
     vm->next = vm;
     vm->prev = vm;
     vm_list = vm;

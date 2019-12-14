@@ -76,3 +76,5 @@
 (apply 3 #t)
 (call/cc 1 #f)
 (sys_resume_cont 1 #f)
+(fork-thread 1 #f)
+(thread-exit 1 #f)

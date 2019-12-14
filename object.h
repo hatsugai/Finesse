@@ -289,6 +289,7 @@ struct vm_context {
     uint_t r_num_args;
     opt *stack;
     opt *cstack;
+    bool exit;
 };
 
 typedef opt (*pf_builtin_t)(vm_context *vm, unsigned argc, const opt *argv);
@@ -370,6 +371,9 @@ static inline opt ipop(void) {
 
 void init_istack(void);
 void init_environments(void);
+vm_context *make_vm(opt thunk);
+void add_vm(vm_context *vm);
+void del_vm(vm_context *vm);
 void init_vm(const char *sym_name);
 void init_object_space(void);
 void init_load(const char *filename, bool b_init_path);
